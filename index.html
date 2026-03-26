@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Tarjeta Virtual</title>
+    <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/aframe-extras@6.1.1/dist/aframe-extras.min.js"></script>
+
+    <script>
+      AFRAME.registerComponent('clickeable-info', {
+        schema: { target: { type: 'string' } },
+        init: function () {
+          this.el.addEventListener('click', () => {
+            // Oculta todos los textos sociales
+            const socialInfo = [
+              'whatsapp-info', 'facebook-info', 'instagram-info', 'linkedin-info'
+            ];
+            socialInfo.forEach(id => {
+              const el = document.querySelector(`#${id}`);
+              if (el) el.setAttribute('visible', false);
+            });
+
+            // Muestra el target deseado
+            const target = document.querySelector(`#${this.data.target}`);
+            if (target) target.setAttribute('visible', true);
+          });
+        }
+      });
+
+    </script>
+
+    <script>
+      AFRAME.registerComponent('sticky-marker', {
+        init: function () {
+            const marker = this.el;
+            const content = marker.querySelector('a-box');
+            let found = false;
+
+            marker.addEventListener('markerFound', () => {
+                if (found) return; // Solo la primera vez
+                found = true;
+
+                // Captura la posición y rotación mundial del marcador
+                const worldPos = new THREE.Vector3();
+                const worldRot = new THREE.Quaternion();
+                const worldScale = new THREE.Vector3();
+                marker.object3D.matrixWorld.decompose(worldPos, worldRot, worldScale);
+
+                // Mueve el contenido a la escena raíz con esa posición
+                const scene = document.querySelector('a-scene');
+                scene.object3D.add(content.object3D);
+
+                content.object3D.position.copy(worldPos);
+                content.object3D.quaternion.copy(worldRot);
+            });
+
+            // ← aquí, dentro del mismo init
+            marker.addEventListener('markerLost', () => {
+                if (found) {
+                    content.object3D.matrixAutoUpdate = false;
+                }
+            });
+        }
+        });
+    </script>
+    
+    <script>
+      AFRAME.registerComponent('drag-move', {
+        schema: {
+          speed: { type: 'number', default: 0.005 },
+          axis: { type: 'string', default: 'x-z' } // 'x-z' o 'x-y'
+        },
+
+        init: function () {
+          this.isDragging = false;
+          this.previousX = 0;
+          this.previousY = 0;
+
+          const canvas = this.el.sceneEl.canvas;
+
+          canvas.addEventListener('mousedown', this.onMouseDown.bind(this));
+          canvas.addEventListener('mousemove', this.onMouseMove.bind(this));
+          window.addEventListener('mouseup', this.onMouseUp.bind(this));
+
+          canvas.addEventListener('touchstart', this.onTouchStart.bind(this));
+          canvas.addEventListener('touchmove', this.onTouchMove.bind(this));
+          window.addEventListener('touchend', this.onMouseUp.bind(this));
+        },
+
+        onMouseDown: function (e) {
+          this.isDragging = true;
+          this.previousX = e.clientX;
+          this.previousY = e.clientY;
+        },
+
+        onMouseMove: function (e) {
+          if (!this.isDragging) return;
+          const deltaX = (e.clientX - this.previousX) * this.data.speed;
+          const deltaY = (e.clientY - this.previousY) * this.data.speed;
+
+          this.move(deltaX, deltaY);
+
+          this.previousX = e.clientX;
+          this.previousY = e.clientY;
+        },
+
+        onTouchStart: function (e) {
+          this.isDragging = true;
+          this.previousX = e.touches[0].clientX;  
+          this.previousY = e.touches[0].clientY;
+        },
+
+        onTouchMove: function (e) {
+          if (!this.isDragging) return;
+          const deltaX = (e.touches[0].clientX - this.previousX) * this.data.speed;
+          const deltaY = (e.touches[0].clientY - this.previousY) * this.data.speed;
+
+          this.move(deltaX, deltaY);
+
+          this.previousX = e.touches[0].clientX;
+          this.previousY = e.touches[0].clientY;
+        },
+
+        onMouseUp: function () {
+          this.isDragging = false;
+        },
+
+        move: function (dx, dy) {
+          const position = this.el.object3D.position;
+          if (this.data.axis === 'x-z') {
+            position.x += dx;
+            position.z += dy;
+          } else if (this.data.axis === 'x-y') {
+            position.x += dx;
+            position.y -= dy;
+          }
+        }
+      });
+
+    </script>
+
+    <script>
+        window.addEventListener('load', () => {
+        const video = document.getElementById('miVideo');
+        video.muted = true;
+        video.play().catch(e => console.warn('Video error:', e));
+
+        // Cuando el video termina, muestra la tarjeta
+        video.addEventListener('ended', () => {
+            // Oculta el video
+            const aVideo = document.querySelector('a-video');
+            if (aVideo) aVideo.setAttribute('visible', false);
+
+            // Para el primer audio
+            const audioIntro = document.querySelector('#audio-intro');
+            if (audioIntro) audioIntro.components.sound.stopSound();
+
+             // Arranca el segundo video
+            const video2 = document.getElementById('miVideo2');
+            if (video2) {video2.play().catch(e => console.warn('Video2 error:', e));}
+
+            // Muestra la firma
+            const firma = document.querySelector('#firma');
+            if (firma) firma.setAttribute('visible', true);
+
+            // Muestra los botones
+            const botones = document.querySelector('#botones');
+            if (botones) botones.setAttribute('visible', true);
+
+            // Arranca el segundo audio
+            const audioTarjeta = document.querySelector('#audio-tarjeta');
+            if (audioTarjeta) audioTarjeta.components.sound.playSound();
+        });
+        });
+    </script>
+
+  </head>
+  <body style="margin: 0; overflow: hidden;">
+    <a-scene embedded arjs='sourceType: webcam; debugUIEnabled: false;' >
+     
+      <a-assets timeout="10000">
+        <video id="miVideo"
+            src="music/Peru.mp4"
+            autoplay muted
+            crossorigin="anonymous"
+            playsinline webkit-playsinline
+            preload="auto">
+        </video>
+        <video id="miVideo2"
+            src="music/himno.mp4"
+            muted
+            crossorigin="anonymous"
+            playsinline webkit-playsinline
+            preload="auto">
+        </video>
+      </a-assets>
+
+      <!-- Audio intro -->
+      <a-sound id="audio-intro" src="music/Peru.mp4" autoplay="true" position="0 1.6 -3"></a-sound>
+      <!-- Audio tarjeta -->
+      <a-sound id="audio-tarjeta" src="music/Contigo_Perú.mp3" autoplay="false" position="0 1.6 -3"></a-sound>
+
+      <!--<a-marker preset="hiro">-->
+      <a-marker type="pattern" url="pattern-Peru.patt" sticky-marker>  
+        
+        <!-- Tarjeta como contenedor -->
+        <a-box position="0 0 0" rotation="-30 0 0" width="2" height="1" depth="0.05" color="#000000" opacity="0" transparent="true" drag-move="axis: x-y">
+          
+          <a-video src="#miVideo" position="0 0 0" width="1.9" height="0.9"></a-video>
+
+          <a-video id="firma" src="#miVideo2" position="0 0 0" width="1.9" height="0.9" visible="false"></a-video>
+         
+          <!-- Botones y textos -->
+          <a-entity id="botones" visible="false">
+            <!-- costa -->
+            <a-box position="-0.8 0.3 0.06" width="0.6" height="0.20" depth="0.01" 
+                  color="#000000" opacity="0" transparent="true"
+                  class="clickable" id="btn-whatsapp"
+                  clickeable-info="target: whatsapp-info">
+              <a-image src="images/images_costa.png" position="0 0 0.03" width="0.5" height="0.2"></a-image>
+            </a-box>
+            <!-- Texto que aparece al hacer click -->      
+            <a-image id="whatsapp-info" src="images/icon_WhatsappText.png" 
+              width="3" height="0.2"
+              position="-0.35 -0.57 0.03"
+              scale="0.4 0.4 0.4"
+              visible="false">
+            </a-image>
+            <!-- sierra -->
+            <a-box position="-0.8 0 0.06" width="0.6" height="0.20" depth="0.01" 
+                  color="#000000" opacity="0" transparent="true"
+                  class="clickable" id="btn-facebook"
+                  clickeable-info="target: facebook-info">
+              <a-image src="images/images_sierra.png" position="0 0 0.03" width="0.5" height="0.2"></a-image>
+            </a-box>
+            <!-- Texto que aparece al hacer click -->      
+            <a-image id="facebook-info" src="images/icon_facebookText.png" 
+              width="5" height="0.2"
+              position="0 -0.57 0.03"
+              scale="0.4 0.4 0.4"
+              visible="false">
+            </a-image>
+            <!-- selva -->
+            <a-box position="-0.8 -0.3 0.06" width="0.6" height="0.2" depth="0.01" 
+                  color="#000000" opacity="0" transparent="true"
+                  class="clickable" id="btn-instagram"
+                  clickeable-info="target: instagram-info">
+              <a-image src="images/images_selva.png" position="0 0 0.03" width="0.5" height="0.2"></a-image>
+            </a-box>
+            <!-- Texto que aparece al hacer click -->      
+            <a-image id="instagram-info" src="images/icon_instagramText.png" 
+              width="5" height="0.18"
+              position="0 -0.57 0.03"
+              scale="0.4 0.4 0.4"
+              visible="false">
+            </a-image>
+          </a-entity>
+        </a-box>
+      </a-marker>
+        <!-- Cámara para navegación -->
+        <a-entity camera>
+          <a-cursor
+            fuse="false"
+            rayOrigin="cursor"
+            raycaster="objects: .clickable; interval: 50"
+            material="color: transparent; opacity: 0.1;"
+            geometry="primitive: ring; radiusInner: 0.062; radiusOuter: 0.065">
+          </a-cursor>
+        </a-entity>
+    </a-scene>
+  </body>
+</html>
