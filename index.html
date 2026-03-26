@@ -61,7 +61,7 @@
                 content.object3D.matrixAutoUpdate = false;
                 content.object3D.updateMatrix();
 
-            }, 100); // 100ms es suficiente para que el tracking estabilice
+            }, 5000); // 5000ms es suficiente para que el tracking estabilice
             });
 
             marker.addEventListener('markerLost', () => {
