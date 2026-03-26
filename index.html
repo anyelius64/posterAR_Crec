@@ -38,28 +38,36 @@
             let found = false;
 
             marker.addEventListener('markerFound', () => {
-                if (found) return; // Solo la primera vez
+            if (found) return;
+
+            // Espera un frame para que matrixWorld esté listo
+            setTimeout(() => {
                 found = true;
 
-                // Captura la posición y rotación mundial del marcador
                 const worldPos = new THREE.Vector3();
                 const worldRot = new THREE.Quaternion();
                 const worldScale = new THREE.Vector3();
                 marker.object3D.matrixWorld.decompose(worldPos, worldRot, worldScale);
 
-                // Mueve el contenido a la escena raíz con esa posición
+                // Desancla del marker y ancla a la escena
                 const scene = document.querySelector('a-scene');
                 scene.object3D.add(content.object3D);
 
                 content.object3D.position.copy(worldPos);
                 content.object3D.quaternion.copy(worldRot);
+                content.object3D.scale.copy(worldScale);
+
+                // Congela la posición
+                content.object3D.matrixAutoUpdate = false;
+                content.object3D.updateMatrix();
+
+            }, 100); // 100ms es suficiente para que el tracking estabilice
             });
 
-            // ← aquí, dentro del mismo init
             marker.addEventListener('markerLost', () => {
-                if (found) {
-                    content.object3D.matrixAutoUpdate = false;
-                }
+            if (found) {
+                content.object3D.matrixAutoUpdate = false;
+            }
             });
         }
         });
